@@ -11,7 +11,9 @@
         }
         AbstractRenderer.prototype.addObject = function (object) {
             if (object) {
-                this.renderObjects.push(object);
+                if (this.renderObjects.indexOf(object) === -1) {
+                    this.renderObjects.push(object);
+                }
             }
         };
 
@@ -25,13 +27,8 @@
         };
 
         AbstractRenderer.prototype.moveObjects = function (x, y, z) {
-            if (typeof x === "undefined") { x = 0; }
-            if (typeof y === "undefined") { y = 0; }
-            if (typeof z === "undefined") { z = 0; }
             this.renderObjects.forEach(function (value) {
-                value.x += x;
-                value.y += y;
-                value.z += z;
+                value.move(x, y, z);
             });
             this.x += x;
             this.y += y;
@@ -39,35 +36,27 @@
         };
 
         AbstractRenderer.getArea = function (objects, startx, starty, startz, endx, endy, endz) {
-            if (typeof startx === "undefined") { startx = undefined; }
-            if (typeof starty === "undefined") { starty = undefined; }
-            if (typeof startz === "undefined") { startz = undefined; }
-            if (typeof endx === "undefined") { endx = undefined; }
-            if (typeof endy === "undefined") { endy = undefined; }
-            if (typeof endz === "undefined") { endz = undefined; }
             return objects.filter(function (value) {
-                return (((startx === undefined) || (startx !== undefined && value.x >= startx)) && ((endx === undefined) || (endx !== undefined && value.x <= endx)) && ((starty === undefined) || (starty !== undefined && value.y >= starty)) && ((endy === undefined) || (endy !== undefined && value.y <= endy)) && ((startz === undefined) || (startz !== undefined && value.z >= startz)) && ((endz === undefined) || (endz !== undefined && value.z <= endz)));
+                return value.isInArea(startx, starty, startz, endx, endy, endz);
             });
         };
 
         AbstractRenderer.getLevel = function (objects, startlevel, endlevel) {
-            if (typeof startlevel === "undefined") { startlevel = undefined; }
-            if (typeof endlevel === "undefined") { endlevel = undefined; }
             return objects.filter(function (value) {
-                return (((startlevel === undefined) || (startlevel !== undefined && value.level >= startlevel)) && ((endlevel === undefined) || (endlevel !== undefined && value.level <= endlevel)));
+                return value.isInLevel(startlevel, endlevel);
             });
         };
 
         AbstractRenderer.sortRenderObjects = function (objects) {
             return objects.sort(function (a, b) {
-                if (a.level !== b.level) {
-                    return (a.level - b.level);
-                } else if (a.x !== b.x) {
-                    return (a.x - b.x);
-                } else if (a.y !== b.y) {
-                    return (a.y - b.y);
-                } else if (a.z !== b.z) {
-                    return (a.z - b.z);
+                if (a.getLevel() !== b.getLevel()) {
+                    return (a.getLevel() - b.getLevel());
+                } else if (a.getZ() !== b.getZ()) {
+                    return (a.getZ() - b.getZ());
+                } else if (a.getY() !== b.getY()) {
+                    return (a.getZ() - b.getY());
+                } else if (a.getX() !== b.getX()) {
+                    return (a.getX() - b.getX());
                 } else {
                     return 0;
                 }
@@ -87,9 +76,6 @@
         };
 
         AbstractRenderer.prototype.draw = function (width, height, depth) {
-            if (typeof width === "undefined") { width = undefined; }
-            if (typeof height === "undefined") { height = undefined; }
-            if (typeof depth === "undefined") { depth = undefined; }
             var objects = Renderer.AbstractRenderer.getArea(this.renderObjects, this.x, this.y, this.z, this.x + width, this.y + height, this.z + depth);
             objects = Renderer.AbstractRenderer.getLevel(objects, 0);
             objects = Renderer.AbstractRenderer.sortRenderObjects(objects);

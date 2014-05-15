@@ -1,12 +1,14 @@
 ﻿module Renderer {
     "use strict";
     export interface IRenderObject {
-        x: number;
-        y: number;
-        z: number;
-        level: number;
-
+        getX(): number;
+        getY(): number;
+        getZ(): number;
+        getLevel(): number;
         draw(): void;
+        isInArea(startx?: number, starty?: number, startz?: number, endx?: number, endy?: number, endz?: number): boolean;
+        isInLevel(startLevel?: number, endLevel?: number): boolean;
+        move(x?: number, y?: number, z?: number): void;
     }
 
     export class AbstractRenderer {
@@ -24,7 +26,9 @@
 
         addObject(object: IRenderObject): void {
             if (object) {
-                this.renderObjects.push(object);
+                if (this.renderObjects.indexOf(object) === -1) {
+                    this.renderObjects.push(object);
+                }
             }
         }
 
@@ -37,11 +41,9 @@
             }
         }
         
-        moveObjects(x: number = 0, y: number = 0, z: number = 0): void {
+        moveObjects(x?: number, y?: number, z?: number): void {
             this.renderObjects.forEach(function (value: IRenderObject): void {
-                value.x += x;
-                value.y += y;
-                value.z += z;
+                value.move(x, y, z);
             });
             this.x += x;
             this.y += y;
@@ -49,40 +51,28 @@
         }
 
         static getArea(objects: Array<IRenderObject>,
-            startx: number = undefined, starty: number = undefined, startz: number = undefined,
-            endx: number = undefined, endy: number = undefined, endz: number = undefined
-            ): Array<IRenderObject> {
+            startx?: number, starty?: number, startz?: number, endx?: number, endy?: number, endz?: number): Array<IRenderObject> {
             return objects.filter(function (value: IRenderObject): boolean {
-                return (
-                    ((startx === undefined) || (startx !== undefined && value.x >= startx)) &&
-                    ((endx === undefined) || (endx !== undefined && value.x <= endx)) &&
-                    ((starty === undefined) || (starty!== undefined && value.y >= starty)) &&
-                    ((endy === undefined) || (endy !== undefined && value.y <= endy)) &&
-                    ((startz === undefined) || (startz !== undefined && value.z >= startz)) &&
-                    ((endz === undefined) || (endz !== undefined && value.z <= endz))
-                );
+                return value.isInArea(startx, starty, startz, endx, endy, endz);
             });
         }
 
-        static getLevel(objects: Array<IRenderObject>, startlevel: number = undefined, endlevel:number = undefined): Array<IRenderObject> {
+        static getLevel(objects: Array<IRenderObject>, startlevel?: number, endlevel?:number): Array<IRenderObject> {
             return objects.filter(function (value: IRenderObject): boolean {
-                return (
-                    ((startlevel === undefined) || (startlevel !== undefined && value.level >= startlevel)) &&
-                    ((endlevel === undefined) || (endlevel !== undefined && value.level <= endlevel))
-                    );
+                return value.isInLevel(startlevel, endlevel);
             });
         }
 
         static sortRenderObjects(objects: Array<IRenderObject>): Array<IRenderObject> {
             return objects.sort(function (a: IRenderObject, b: IRenderObject): number {
-                if (a.level !== b.level) {
-                    return (a.level - b.level);
-                } else if (a.x !== b.x) {
-                    return (a.x - b.x);
-                } else if (a.y !== b.y) {
-                    return (a.y - b.y);
-                } else if (a.z !== b.z) {
-                    return (a.z - b.z);
+                if (a.getLevel() !== b.getLevel()) {
+                    return (a.getLevel() - b.getLevel());
+                } else if (a.getZ() !== b.getZ()) {
+                    return (a.getZ() - b.getZ());
+                } else if (a.getY() !== b.getY()) {
+                    return (a.getZ() - b.getY());
+                } else if (a.getX() !== b.getX()) {
+                    return (a.getX() - b.getX());
                 } else {
                     return 0;
                 }
@@ -101,7 +91,7 @@
             throw new Error("This method is abstract");
         }
 
-        draw(width: number = undefined, height: number = undefined, depth: number = undefined): void {
+        draw(width?: number, height?: number, depth?: number): void {
             var objects: Array<IRenderObject> = Renderer.AbstractRenderer.getArea(this.renderObjects, this.x, this.y, this.z,
                 this.x + width, this.y + height, this.z + depth);
             objects = Renderer.AbstractRenderer.getLevel(objects, 0);
@@ -110,7 +100,6 @@
             objects.forEach(function (value: IRenderObject): void {
                 value.draw();
             });
-
         }
     }
 } 
