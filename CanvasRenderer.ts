@@ -1,68 +1,67 @@
-﻿module Renderer {
+﻿/// <reference path="Renderer.ts" />
+/// <reference path="HtmlRenderer.ts" />
+module Renderer {
     "use strict";
-    export interface ICanvasObject extends IRenderObject {
-        context: CanvasRenderingContext2D;
+    export interface ICanvasObject extends IHtmlObject {
+        setContext(context: CanvasRenderingContext2D): ICanvasObject;
+        getContext(): CanvasRenderingContext2D;
     }
 
-    export class CanvasRenderer extends AbstractRenderer {
-        public canvas: HTMLCanvasElement = undefined;
-        public context: CanvasRenderingContext2D = undefined;
-        private animationFrame: any = undefined;
-        private animationFrameId: number = undefined;
+    export class CanvasRenderer extends HtmlRenderer {
+        private context: CanvasRenderingContext2D = undefined;
 
         constructor(element: HTMLCanvasElement) {
-            super();
-            this.canvas = element;
-            this.context = element.getContext("2d");
+            super(element);
+            this
+                .setContext(this.getCanvas().getContext("2d"))
+                .setRenderFunction(this.animate)
+            ;
+        }
+        public getCanvas(): HTMLCanvasElement{
+            return <HTMLCanvasElement>super.getCanvas();
         }
 
-        addObject(object: ICanvasObject): void {
+        public setCanvas(canvas: HTMLCanvasElement): CanvasRenderer {
+            super.setCanvas(canvas);
+            return this;
+        }
+
+        public getContext(): CanvasRenderingContext2D  {
+            return <CanvasRenderingContext2D >this.context;
+        }
+
+        public setContext(context: CanvasRenderingContext2D): CanvasRenderer {
+            this.context = context;
+            return this;
+        }
+
+        public addObject(object: ICanvasObject): void {
             if (object) {
-                object.context = this.context;
+                object.setContext(this.getContext());
                 super.addObject(object);
             }
-        }
+        }        
 
-        start(): void {
-            this.drawOutput();
-        }
-
-        stop(): void {
-            if (this.animationFrameId !== undefined) {
-                cancelAnimationFrame(this.animationFrameId);
-                this.animationFrameId = undefined;
-            }
-        }
-
-        setAnimationFrame(callback: any): void {
-            if (callback && typeof (callback) === "function") {
-                this.animationFrame = callback;
-            }
-        }
-
-        private drawOutput(): void {
-            if (this.animationFrame && typeof (this.animationFrame) === "function") {
-                this.animationFrameId = this.animationFrame(function (): void { this.animate(); }.bind(this));
-            }
-        }
-
-        animate(): void {
+        protected animate(renderer: CanvasRenderer): void {
+            //asign new frame call
+            renderer.drawOutput();
             // update
             // resize canvas if windows size has changed
-            if (this.canvas.width !== this.canvas.clientWidth ||
-                this.canvas.height !== this.canvas.clientHeight) {
-                this.context.canvas.width = this.canvas.clientWidth;
-                this.context.canvas.height = this.canvas.clientHeight;
+            if (renderer.getCanvas().width !== renderer.getCanvas().clientWidth ||
+                renderer.getCanvas().height !== renderer.getCanvas().clientHeight) {
+                renderer.getContext().canvas.width = renderer.getCanvas().clientWidth;
+                renderer.getContext().canvas.height = renderer.getCanvas().clientHeight;
             }
             // clear
-            this.clear();
+            renderer.clear();
             // draw stuff
-            this.draw(this.canvas.width, this.canvas.height);
-            this.drawOutput();
+            renderer.draw(renderer.getCanvas().width, renderer.getCanvas().height);
+            
         }
 
-        clear(): void {
-            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        public clear(): CanvasRenderer {
+            this.getContext().clearRect(0, 0, this.getCanvas().width, this.getCanvas().height);
+            return this;
         }
     }
 } 

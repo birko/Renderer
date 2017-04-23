@@ -1,5 +1,10 @@
 ﻿module Renderer {
     "use strict";
+
+    export interface RenderEvent {
+        (renderer: AbstractRenderer): void;
+    }
+
     export interface IRenderObject {
         getX(): number;
         getY(): number;
@@ -11,59 +16,160 @@
         move(x?: number, y?: number, z?: number): void;
     }
 
-    export class AbstractRenderer {
-        public x: number;
-        public y: number;
-        public z: number;
-        public renderObjects: Array<IRenderObject>;
-        
-        constructor() {
-            this.x = 0;
-            this.y = 0;
-            this.z = 0;
-            this.renderObjects = new Array();
+    export abstract class AbstractRenderer {
+        private x: number = 0;
+        private y: number = 0;
+        private z: number = 0;
+        private renderObjects: IRenderObject[] = [];
+        private animationFrame: any = undefined;
+        private animationFrameId: number = undefined;
+        private renderFunction: RenderEvent = null;
+
+
+        constructor(rednerFunction: RenderEvent = null) {
+            this
+                .setX(0)
+                .setY(0)
+                .setZ(0)
+                .setRenderObjects([])
+                .setRenderFunction(rednerFunction);
         }
 
-        addObject(object: IRenderObject): void {
+        public getX(): number {
+            return this.x;
+        }
+
+        public setX(x: number): AbstractRenderer {
+            this.x = x;
+            return this;
+        }
+
+        public getY(): number {
+            return this.y;
+        }
+
+        public setY(y: number): AbstractRenderer {
+            this.y = y;
+            return this;
+        }
+
+        public getZ(): number {
+            return this.z;
+        }
+
+        public setZ(z: number): AbstractRenderer {
+            this.z = z;
+            return this;
+        }
+
+        protected getRenderFunction(): RenderEvent {
+            return this.renderFunction
+        }
+
+        public setRenderFunction(renderFunction: RenderEvent = null): AbstractRenderer {
+            this.renderFunction = renderFunction;
+            return this;
+        }
+
+        public getRenderObjects(): IRenderObject[] {
+            return this.renderObjects;
+        }
+
+        public setRenderObjects(objects: IRenderObject[] = null): AbstractRenderer {
+            this.renderObjects = objects;
+            return this;
+        }
+
+
+        public addObject(object: IRenderObject): void {
             if (object) {
-                if (this.renderObjects.indexOf(object) === -1) {
+                if (this.getRenderObjects().indexOf(object) <0) {
                     this.renderObjects.push(object);
                 }
             }
         }
 
-        removeObject(object: IRenderObject): void {
+        public removeObject(object: IRenderObject): void {
             if (object) {
-                var index: number = this.renderObjects.indexOf(object);
-                if (index !== -1) {
-                    this.renderObjects.slice(index, 1);
+                var index: number = this.getRenderObjects().indexOf(object);
+                if (index < 0) {
+                    this.renderObjects.splice(index, 1);
                 }
             }
         }
         
-        moveObjects(x?: number, y?: number, z?: number): void {
+        public moveObjects(x?: number, y?: number, z?: number): void {
             this.renderObjects.forEach(function (value: IRenderObject): void {
                 value.move(x, y, z);
             });
-            this.x += x;
-            this.y += y;
-            this.z += z;
+            this
+                .setX(this.getX() + x)
+                .setY(this.getY() + y)
+                .setZ(this.getZ() + z)
         }
 
-        static getArea(objects: Array<IRenderObject>,
-            startx?: number, starty?: number, startz?: number, endx?: number, endy?: number, endz?: number): Array<IRenderObject> {
+        public start(): AbstractRenderer{
+            this.drawOutput();
+            return this;
+        }
+
+        public stop(): AbstractRenderer {
+            if (this.animationFrameId !== undefined) {
+                cancelAnimationFrame(this.animationFrameId);
+                this.animationFrameId = undefined;
+            }
+            return this;
+        }
+
+        public setAnimationFrame(callback: any): AbstractRenderer {
+            if (callback && typeof (callback) === "function") {
+                this.animationFrame = callback;
+            }
+            return this;
+        }
+
+        protected drawOutput(): void {
+            if (this.animationFrame && typeof (this.animationFrame) === "function") {
+                var exec = this.getRenderFunction();
+                if (exec !== undefined && exec !== null) {
+                    this.animationFrameId = this.animationFrame(() => {
+                        exec(this);
+                    });
+                }
+            }
+        }
+
+        protected draw(width?: number, height?: number, depth?: number): AbstractRenderer {
+            var objects: IRenderObject[] = Renderer.AbstractRenderer.getArea(this.renderObjects, this.x, this.y, this.z,
+                this.x + width, this.y + height, this.z + depth);
+            objects = Renderer.AbstractRenderer.getLevel(objects, 0);
+            objects = Renderer.AbstractRenderer.sortRenderObjects(objects);
+
+            objects.forEach(function (value: IRenderObject): void {
+                value.draw();
+            });
+            return this;
+        }
+
+        public clear(): AbstractRenderer {
+            throw new Error("This method is abstract");
+        }
+
+        ///static methods
+        static getArea(objects: IRenderObject[],
+            startx?: number, starty?: number, startz?: number, endx?: number, endy?: number, endz?: number): IRenderObject[] {
             return objects.filter(function (value: IRenderObject): boolean {
                 return value.isInArea(startx, starty, startz, endx, endy, endz);
             });
         }
 
-        static getLevel(objects: Array<IRenderObject>, startlevel?: number, endlevel?:number): Array<IRenderObject> {
+        static getLevel(objects: IRenderObject[], startlevel?: number, endlevel?: number): IRenderObject[] {
             return objects.filter(function (value: IRenderObject): boolean {
                 return value.isInLevel(startlevel, endlevel);
             });
         }
 
-        static sortRenderObjects(objects: Array<IRenderObject>): Array<IRenderObject> {
+        static sortRenderObjects(objects: IRenderObject[]): IRenderObject[] {
             return objects.sort(function (a: IRenderObject, b: IRenderObject): number {
                 if (a.getLevel() !== b.getLevel()) {
                     return (a.getLevel() - b.getLevel());
@@ -79,27 +185,5 @@
             });
         }
 
-        start(): void {
-            throw new Error("This method is abstract");
-        }
-
-        stop(): void {
-            throw new Error("This method is abstract");
-        }
-
-        clear(): void {
-            throw new Error("This method is abstract");
-        }
-
-        draw(width?: number, height?: number, depth?: number): void {
-            var objects: Array<IRenderObject> = Renderer.AbstractRenderer.getArea(this.renderObjects, this.x, this.y, this.z,
-                this.x + width, this.y + height, this.z + depth);
-            objects = Renderer.AbstractRenderer.getLevel(objects, 0);
-            objects = Renderer.AbstractRenderer.sortRenderObjects(objects);
-
-            objects.forEach(function (value: IRenderObject): void {
-                value.draw();
-            });
-        }
     }
 } 
